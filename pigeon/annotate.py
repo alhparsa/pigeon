@@ -1,13 +1,12 @@
-import random
 import functools
-from IPython.display import display, clear_output
-from ipywidgets import Button, Dropdown, HTML, HBox, IntSlider, FloatSlider, Textarea, Output
+import json
+import random
 
-def annotate(examples,
-             options=None,
-             shuffle=False,
-             include_skip=True,
-             display_fn=display):
+from IPython.display import clear_output, display
+from ipywidgets import HTML, Button, Dropdown, FloatSlider, HBox, IntSlider, Output, Textarea
+
+
+def annotate(examples, options=None, shuffle=False, include_skip=True, write_to_file=None, display_fn=display):
     """
     Build an interactive widget for annotating a list of input examples.
 
@@ -20,6 +19,7 @@ def annotate(examples,
              if None: arbitrary text input (TextArea)
     shuffle: bool, shuffle the examples before annotating
     include_skip: bool, include option to skip example while annotating
+    write_to_file: str, write to file after each annotation
     display_fn: func, function for displaying an example to the user
 
     Returns
@@ -35,7 +35,7 @@ def annotate(examples,
 
     def set_label_text():
         nonlocal count_label
-        count_label.value = '{} examples annotated, {} examples left'.format(
+        count_label.value = "{} examples annotated, {} examples left".format(
             len(annotations), len(examples) - current_index
         )
 
@@ -46,7 +46,7 @@ def annotate(examples,
         if current_index >= len(examples):
             for btn in buttons:
                 btn.disabled = True
-            print('Annotation done.')
+            print("Annotation done.")
             return
         with out:
             clear_output(wait=True)
@@ -54,6 +54,9 @@ def annotate(examples,
 
     def add_annotation(annotation):
         annotations.append((examples[current_index], annotation))
+        if write_to_file is not None:
+            with open(write_to_file, "w") as f:
+                json.dump(annotations, f)
         show_next()
 
     def skip(btn):
@@ -64,37 +67,41 @@ def annotate(examples,
     display(count_label)
 
     if type(options) == list:
-        task_type = 'classification'
+        task_type = "classification"
     elif type(options) == tuple and len(options) in [2, 3]:
-        task_type = 'regression'
+        task_type = "regression"
     elif options is None:
-        task_type = 'captioning'
+        task_type = "captioning"
     else:
-        raise Exception('Invalid options')
+        raise Exception("Invalid options")
 
     buttons = []
-    
-    if task_type == 'classification':
+
+    if task_type == "classification":
         use_dropdown = len(options) > 5
 
         if use_dropdown:
             dd = Dropdown(options=options)
             display(dd)
-            btn = Button(description='submit')
+            btn = Button(description="submit")
+
             def on_click(btn):
                 add_annotation(dd.value)
+
             btn.on_click(on_click)
             buttons.append(btn)
-        
+
         else:
             for label in options:
                 btn = Button(description=label)
+
                 def on_click(label, btn):
                     add_annotation(label)
+
                 btn.on_click(functools.partial(on_click, label))
                 buttons.append(btn)
 
-    elif task_type == 'regression':
+    elif task_type == "regression":
         target_type = type(options[0])
         if target_type == int:
             cls = IntSlider
@@ -107,23 +114,27 @@ def annotate(examples,
             min_val, max_val, step_val = options
             slider = cls(min=min_val, max=max_val, step=step_val)
         display(slider)
-        btn = Button(description='submit')
+        btn = Button(description="submit")
+
         def on_click(btn):
             add_annotation(slider.value)
+
         btn.on_click(on_click)
         buttons.append(btn)
 
     else:
         ta = Textarea()
         display(ta)
-        btn = Button(description='submit')
+        btn = Button(description="submit")
+
         def on_click(btn):
             add_annotation(ta.value)
+
         btn.on_click(on_click)
         buttons.append(btn)
 
     if include_skip:
-        btn = Button(description='skip')
+        btn = Button(description="skip")
         btn.on_click(skip)
         buttons.append(btn)
 
