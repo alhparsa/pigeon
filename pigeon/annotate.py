@@ -57,7 +57,7 @@ def annotate(examples, options=None, shuffle=False, include_skip=True, write_to_
         if write_to_file is not None:
             summerized_annotations = []
             for annon in annotations:
-                summerized_annotations[annon][0] = annon[-1]
+                summerized_annotations[annon][0][0] = annon[-1]
             with open(write_to_file, "w") as f:
                 json.dump(summerized_annotations, f)
         show_next()
